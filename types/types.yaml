@@ -1,0 +1,209 @@
+namespace: Radius.Resources
+types:
+  aiModels:
+    description: |
+      The Radius.Resources/aiModels Resource Type deploys an AI model. It is always a part of a Radius Application.
+      To deploy an AI model, add an `aiModels` resource to the application definition Bicep file
+      and specify the model to deploy (e.g. `gpt-35-turbo`, `gpt-4`, `text-embedding-3-small`).
+      ```bicep
+      extension radius
+
+      extension radiusResources
+
+      param environment string
+
+      resource myApplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+
+      resource myaimodel 'Radius.Resources/aiModels@2025-08-01-preview' = {
+        name: 'my-ai-model'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          model: 'gpt-35-turbo'
+        }
+      }
+
+      // Connect to a container
+      resource chatapp 'Applications.Core/containers@2023-10-01-preview' = {
+        name: 'chatbot'
+        properties: {
+          application: myApplication.id
+          container: {
+            image: 'myregistry.azurecr.io/chatbot:latest'
+          }
+          connections: {
+            ai: {
+              source: myaimodel.id
+            }
+          }
+        }
+      }
+      ```
+
+      When connected to a container, this resource automatically injects the following environment variables:
+      - CONNECTION_AI_ENDPOINT: The AI model endpoint URL
+      - CONNECTION_AI_APIKEY: The API key for authentication
+      - CONNECTION_AI_APIVERSION: The API version
+      - CONNECTION_AI_MODEL: The model name
+      - CONNECTION_AI_DEPLOYMENT: The deployment name
+
+    apiVersions:
+      '2025-11-01-preview':
+        schema:
+          type: 'object'
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius environment; typically set by the rad CLI"
+            application:
+              type: string
+              description: "(Required) The application which the resource is associated with"
+            model:
+              type: string
+              description: "(Required) The AI model to deploy. Supported models: gpt-4, gpt-4o, gpt-35-turbo, text-embedding-3-small, text-embedding-ada-002, tinyllama"
+            apiKey:
+              type: string
+              description: "(Read-only) The API key for connecting to the AI model endpoint"
+              readOnly: true
+            apiVersion:
+              type: string
+              description: "(Read-only) The version of the API (e.g., 2024-02-01)"
+              readOnly: true
+            endpoint:
+              type: string
+              description: "(Read-only) The endpoint URL of the AI model service"
+              readOnly: true
+            deployment:
+              type: string
+              description: "(Read-only) The deployment name of the model"
+              readOnly: true
+            location:
+              type: string
+              description: "(Read-only) The Azure region where the AI model is deployed"
+              readOnly: true
+            capacity:
+              type: integer
+              description: "(Read-only) Deployment capacity in thousands of tokens per minute (TPM)"
+              readOnly: true
+            skuName:
+              type: string
+              description: "(Read-only) The SKU name for the AI service (e.g., S0, S1)"
+              readOnly: true
+            publicNetworkAccess:
+              type: string
+              description: "(Read-only) Whether public network access is enabled or disabled"
+              readOnly: true
+            piiFilterEnabled:
+              type: boolean
+              description: "(Read-only) Whether PII (Personally Identifiable Information) content filtering is enabled"
+              readOnly: true
+            region:
+              type: string
+              description: "(Read-only) The region where AWS Bedrock model is deployed"
+              readOnly: true
+            access_key_id:
+              type: string
+              description: "(Read-only) The access_key_id to invoke AWS Bedrock model"
+              readOnly: true
+            secret_access_key:
+              type: string
+              description: "(Read-only) The secret_access_key to invoke AWS Bedrock model"
+              readOnly: true
+          required:
+              - environment
+              - model
+
+  sqlServerDatabases:
+    description: |
+      The Radius.Data/sqlServerDatabases Resource Type deploys a SQL Server database.
+
+      This resource type provisions and manages SQL Server databases with automatic connection
+      injection into connected containers. It supports both cloud SQL Database and SQL Server
+      container deployments.
+
+      ## Example Usage
+      ```bicep
+      resource sqldb 'Radius.Data/sqlServerDatabases@2025-08-01-preview' = {
+        name: 'chatdb'
+        properties: {
+          environment: environment.id
+          application: application.id
+          database: 'ChatDB'
+          username: 'dbadmin'
+          version: '2022'
+        }
+      }
+
+      // Connect to a container
+      resource chatapp 'Applications.Core/containers@2023-10-01-preview' = {
+        name: 'chatbot'
+        properties: {
+          application: application.id
+          container: {
+            image: 'myregistry.azurecr.io/azure-sql-chat:latest'
+          }
+          connections: {
+            sql: {
+              source: sqldb.id
+            }
+          }
+        }
+      }
+      ```
+      When connected to a container, this resource automatically injects the following environment variables:
+      - CONNECTION_SQLSERVER_HOST: The SQL Server hostname
+      - CONNECTION_SQLSERVER_PORT: The SQL Server port (default: 1433)
+      - CONNECTION_SQLSERVER_DATABASE: The database name
+      - CONNECTION_SQLSERVER_USERNAME: The database username
+      - CONNECTION_SQLSERVER_PASSWORD: The database password
+      - CONNECTION_SQLSERVER_CONNECTIONSTRING: A complete connection string
+
+    apiVersions:
+      '2025-11-01-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius EnvironmentID where this database will be deployed"
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID that owns this database resource"
+            database:
+              type: string
+              description: "(Optional) The name of the database to create."
+            version:
+              type: string
+              enum: ['2017', '2019', '2022', '2025']
+              description: |
+                (Optional) The SQL Server version to deploy. This applies only to SQL Server container deployments.
+                For Azure SQL Database deployments, the latest version is always used.
+                - '2017': SQL Server 2017 (container: mcr.microsoft.com/mssql/server:2017-latest)
+                - '2019': SQL Server 2019 (container: mcr.microsoft.com/mssql/server:2019-latest)
+                - '2022': SQL Server 2022 (container: mcr.microsoft.com/mssql/server:2022-latest)
+                - '2025': SQL Server 2025 (container: mcr.microsoft.com/mssql/server:2025-latest)
+                Default: '2025'
+            username:
+              type: string
+              description: "(Optional) The username for connecting to the database."
+              readOnly: true
+            password:
+              type: string
+              description: "(Read-only) The password for connecting to the database."
+              readOnly: true
+            host:
+              type: string
+              description: "(Read-only) The hostname or FQDN used to connect to the SQL Server"
+              readOnly: true
+            port:
+              type: integer
+              description: "(Read-only) The port number used to connect to the database."
+              readOnly: true
+            connectionString:
+              type: string
+              description: |
+                (Read-only) A complete connection string for the database in the format:
+                Server={host},{port};Database={database};User Id={username};Password={password};TrustServerCertificate=True;Connection Timeout=30;
+              readOnly: true
+          required:
+            - environment

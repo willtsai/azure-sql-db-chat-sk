@@ -1,0 +1,50 @@
+# Build artifacts
+bin/
+obj/
+out/
+
+# Environment and secrets
+.env
+.env.*
+!.env.sample
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE and editor files
+.vscode/
+.vs/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation and assets
+*.md
+!README.md
+_assets/
+.github/
+
+# Docker files (don't copy into container)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.Tests/
+tests/
+test/
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
