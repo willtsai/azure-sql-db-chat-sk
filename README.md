@@ -29,11 +29,14 @@ Make sure to have two models deployed, one for generating embeddings (*text-embe
 
 Create a `.env` file starting from the `.env.sample` file:
 
-- `OPENAI_URL`: specify the URL of your Azure OpenAI endpoint, eg: 'https://my-open-ai.openai.azure.com/'
-- `OPENAI_KEY`: specify the API key of your Azure OpenAI endpoint
-- `OPENAI_MODEL`: specify the deployment name of your Azure OpenAI embedding endpoint, eg: 'text-embedding-3-small'
+- `CONNECTION_AICHAT_ENDPOINT`: the endpoint of your Azure OpenAI resource for chat
+- `CONNECTION_AICHAT_APIKEY`: the API key of your Azure OpenAI resource for chat
+- `CONNECTION_AIEMBEDDING_ENDPOINT`: the endpoint of your Azure OpenAI resource for embeddings
+- `CONNECTION_AIEMBEDDING_APIKEY`: the API key of your Azure OpenAI resource for embeddings
+- `CONNECTION_AIEMBEDDING_DEPLOYMENT`: the deployment name of the embedding model
+- `CONNECTION_AICHAT_DEPLOYMENT`: the deployment name of the chat model
 
-- `MSSQL`: the connection string to the Azure SQL database where you want to deploy the database objects and sample data
+- `CONNECTION_SQLSERVER_CONNECTIONSTRING`: the connection string to the Azure SQL database where you want to deploy the database objects and sample data
 - `MSSQL_TABLE_NAME`: the name of the table where the chatbot will store long-term memories
 
 ### Database

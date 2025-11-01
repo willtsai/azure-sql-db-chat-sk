@@ -41,13 +41,20 @@ public class ChatBot
 
     public ChatBot(string envFile)
     {
-        Env.Load(envFile);
-        azureOpenAIEndpoint = Env.GetString("OPENAI_URL");
-        azureOpenAIApiKey = Env.GetString("OPENAI_KEY") ?? string.Empty;
-        embeddingModelDeploymentName = Env.GetString("OPENAI_EMBEDDING_DEPLOYMENT_NAME");
-        chatModelDeploymentName = Env.GetString("OPENAI_CHAT_DEPLOYMENT_NAME");
-        sqlConnectionString = Env.GetString("MSSQL_CONNECTION_STRING");
-        sqlTableName = Env.GetString("MSSQL_TABLE_NAME") ?? "ChatMemories";
+        // Load .env file if it exists (for local development)
+        // In containerized environments, variables are passed directly via environment
+        if (File.Exists(envFile))
+        {
+            Env.Load(envFile);
+        }
+
+        // Read from environment variables (works for both .env and container env vars)
+        azureOpenAIEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_ENDPOINT") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
+        azureOpenAIApiKey = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_APIKEY") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
+        embeddingModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_DEPLOYMENT") ?? string.Empty;
+        chatModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_DEPLOYMENT") ?? string.Empty;
+        sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVER_CONNECTIONSTRING") ?? string.Empty;
+        sqlTableName = Environment.GetEnvironmentVariable("MSSQL_TABLE_NAME") ?? "ChatMemories";
     }
 
     public async Task RunAsync(bool enableDebug = false)

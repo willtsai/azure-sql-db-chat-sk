@@ -1,19 +1,54 @@
 extension radius
 
-@description('The Radius Application ID. Injected automatically by the rad CLI.')
-param application string
+extension radiusResources
 
-resource demo 'Applications.Core/containers@2023-10-01-preview' = {
-  name: 'demo'
+param environment string
+
+param chatModelName string
+param embeddingModelName string
+
+resource insurancechat 'Applications.Core/applications@2023-10-01-preview' = {
+  name: 'insurance-chat'
   properties: {
-    application: application
+    environment: environment
+  }
+}
+
+resource chatbot 'Applications.Core/containers@2023-10-01-preview' = {
+  name: 'chatbot'
+  properties: {
+    application: insurancechat.id
+    environment: environment
     container: {
-      image: 'ghcr.io/radius-project/samples/demo:latest'
-      ports: {
-        web: {
-          containerPort: 3000
-        }
-      }
+      image: 'ghcr.io/willtsai/azure-sql-db-chat-sk:azure'
     }
+  }
+}
+
+resource chatModel 'Radius.Resources/aiModels@2025-11-01-preview' = {
+  name: 'ai-chat-model'
+  properties: {
+    application: insurancechat.id
+    environment: environment
+    model: chatModelName
+  }
+}
+
+resource embeddingModel 'Radius.Resources/aiModels@2025-11-01-preview' = {
+  name: 'ai-embedding-model'
+  properties: {
+    application: insurancechat.id
+    environment: environment
+    model: embeddingModelName
+  }
+}
+
+resource sqlServerDb 'Radius.Resources/sqlServerDatabases@2025-11-01-preview' = {
+  name: 'sql-server-db'
+  properties: {
+    application: insurancechat.id
+    environment: environment
+    database: 'insurancechatdb'
+    version: '2025'
   }
 }

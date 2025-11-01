@@ -31,7 +31,7 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
     }
     providers: {
       azure: {
-        scope: '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/ignite2025-azure-dev' // TODO
+        scope: '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/ignite2025-azure-prod'
       }
     }
   }

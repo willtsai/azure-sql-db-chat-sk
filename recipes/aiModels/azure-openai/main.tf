@@ -59,8 +59,13 @@ variable "enable_pii_filter" {
 }
 
 locals {
-  uniqueName = var.context.resource.name
-  model      = var.context.resource.properties.model
+  # Shared Cognitive Account name based on resource group (not resource name)
+  # This ensures all AI models in the same resource group share one OpenAI instance
+  cognitiveAccountName = "openai-${substr(md5(var.resource_group_name), 0, 8)}"
+
+  # Unique deployment name per Radius resource
+  deploymentName = var.context.resource.name
+  model          = var.context.resource.properties.model
 
   # Map model names to Azure OpenAI deployment configurations
   model_config = {
@@ -109,21 +114,25 @@ locals {
 }
 
 resource "azurerm_cognitive_account" "openai" {
-  name                          = local.uniqueName
+  name                          = local.cognitiveAccountName
   location                      = var.location
   resource_group_name           = var.resource_group_name
   kind                          = "OpenAI"
   sku_name                      = var.sku_name
-  custom_subdomain_name         = local.uniqueName
+  custom_subdomain_name         = local.cognitiveAccountName
   public_network_access_enabled = var.public_network_access == "Enabled" ? true : false
 
   tags = local.all_tags
+
+  lifecycle {
+    ignore_changes = [tags]
+  }
 }
 
 # Content filter for PII detection (only created if enabled)
 resource "azurerm_cognitive_account_rai_policy" "pii_filter" {
   count                = var.enable_pii_filter ? 1 : 0
-  name                 = "${local.uniqueName}-pii-filter"
+  name                 = "${local.deploymentName}-pii-filter"
   cognitive_account_id = azurerm_cognitive_account.openai.id
 
   content_filter {
@@ -136,7 +145,7 @@ resource "azurerm_cognitive_account_rai_policy" "pii_filter" {
 }
 
 resource "azurerm_cognitive_deployment" "model" {
-  name                   = local.model
+  name                   = local.deploymentName
   cognitive_account_id   = azurerm_cognitive_account.openai.id
   rai_policy_name        = var.enable_pii_filter ? azurerm_cognitive_account_rai_policy.pii_filter[0].name : "Microsoft.Default"
   version_upgrade_option = "OnceNewDefaultVersionAvailable"
@@ -173,7 +182,7 @@ output "result" {
       apiVersion          = var.api_version
       endpoint            = azurerm_cognitive_account.openai.endpoint
       model               = local.model
-      deployment          = azurerm_cognitive_deployment.model.name
+      deployment          = local.deploymentName
       location            = var.location
       capacity            = var.capacity
       skuName             = var.sku_name

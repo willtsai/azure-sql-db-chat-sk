@@ -10,17 +10,22 @@ namespace azure_sql_sk;
 
 class DatabaseUtils
 {
-    static public void Deploy(string envFile)  
+    static public void Deploy(string envFile)
     {
-        Env.Load(envFile);
+        // Load .env file if it exists (for local development)
+        // In containerized environments, variables are passed directly via environment
+        if (File.Exists(envFile))
+        {
+            Env.Load(envFile);
+        }
 
-        string azureOpenAIEndpoint = Env.GetString("OPENAI_URL");
-        string azureOpenAIApiKey = Env.GetString("OPENAI_KEY");
-        string embeddingModelDeploymentName = Env.GetString("OPENAI_EMBEDDING_DEPLOYMENT_NAME");
-        string sqlConnectionString = Env.GetString("MSSQL_CONNECTION_STRING");        
+        string azureOpenAIEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_ENDPOINT") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
+        string azureOpenAIApiKey = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_APIKEY") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
+        string embeddingModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_DEPLOYMENT") ?? string.Empty;
+        string sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVER_CONNECTIONSTRING") ?? string.Empty;
 
         if (string.IsNullOrEmpty(sqlConnectionString)) {
-            throw new ApplicationException("MSSQL environment variable not set or empty.");
+            throw new ApplicationException("CONNECTION_SQLSERVER_CONNECTIONSTRING environment variable not set or empty.");
         }
         
         var csb = new SqlConnectionStringBuilder(sqlConnectionString);
@@ -39,9 +44,9 @@ class DatabaseUtils
         };
 
         Dictionary<string, string> variables = new() {
-            {"OPENAI_URL", azureOpenAIEndpoint},
-            {"OPENAI_KEY", azureOpenAIApiKey},
-            {"OPENAI_EMBEDDING_DEPLOYMENT_NAME", embeddingModelDeploymentName}
+            {"CONNECTION_AIEMBEDDING_ENDPOINT", azureOpenAIEndpoint},
+            {"CONNECTION_AIEMBEDDING_APIKEY", azureOpenAIApiKey},
+            {"CONNECTION_AIEMBEDDING_DEPLOYMENT", embeddingModelDeploymentName}
         };
 
         Console.WriteLine("Starting deployment...");

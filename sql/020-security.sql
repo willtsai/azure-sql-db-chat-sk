@@ -4,12 +4,12 @@ begin
 end
 go
 
-if exists(select * from sys.[database_scoped_credentials] where name = '$OPENAI_URL$')
+if exists(select * from sys.[database_scoped_credentials] where name = '$CONNECTION_AIEMBEDDING_ENDPOINT$')
 begin
-	drop database scoped credential [$OPENAI_URL$];
+	drop database scoped credential [$CONNECTION_AIEMBEDDING_ENDPOINT$];
 end
 go
 
-create database scoped credential [$OPENAI_URL$]
-with identity = 'HTTPEndpointHeaders', secret = '{"api-key":"$OPENAI_KEY$"}';
+create database scoped credential [$CONNECTION_AIEMBEDDING_ENDPOINT$]
+with identity = 'HTTPEndpointHeaders', secret = '{"api-key":"$CONNECTION_AIEMBEDDING_APIKEY$"}';
 go
