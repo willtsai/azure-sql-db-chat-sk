@@ -12,6 +12,7 @@ using Azure.Identity;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.VectorData;
 using System.Diagnostics;
+using System.Threading;
 using Microsoft.Data.SqlClient;
 
 #pragma warning disable SKEXP0010
@@ -164,6 +165,16 @@ public class ChatBot
 
             return (logger, kernel, ai, knowledgeCollection);
         });
+
+        var isInteractiveConsole = AnsiConsole.Profile.Capabilities.Interactive && !Console.IsInputRedirected;
+
+        if (!isInteractiveConsole)
+        {
+            AnsiConsole.MarkupLine("[yellow]Interactive console not available. Waiting indefinitely to avoid CrashLoopBackOff.[/]");
+            logger?.LogInformation("Interactive console unavailable. Application entering passive wait mode.");
+            await Task.Delay(Timeout.InfiniteTimeSpan);
+            return;
+        }
 
         AnsiConsole.WriteLine("Ready to chat! Hit 'ctrl-c' to quit.");
                 
