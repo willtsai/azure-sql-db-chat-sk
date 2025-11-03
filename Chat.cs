@@ -185,85 +185,96 @@ public class ChatBot
             Query the database at every user request, even if information is available in chat history, to make sure you always have the latest information.
         """);
         var builder = new StringBuilder();
-        while (true)
+
+        try
         {
-            AnsiConsole.WriteLine();
-            var question = AnsiConsole.Prompt(new TextPrompt<string>($"🧑: "));
-
-            if (string.IsNullOrWhiteSpace(question))
-                continue;
-
-            switch (question)
+            while (true)
             {
-                case "/c":
-                    AnsiConsole.Clear();
-                    continue;
-                case "/ch":
-                    chat.RemoveRange(1, chat.Count - 1);
-                    AnsiConsole.WriteLine("Chat history cleared.");
+                AnsiConsole.WriteLine();
+                var question = AnsiConsole.Prompt(new TextPrompt<string>($"🧑: "));
+
+                if (string.IsNullOrWhiteSpace(question))
                     continue;
 
-                case "/h":
-                    foreach (var message in chat)
-                    {
-                        AnsiConsole.WriteLine($"> ---------- {message.Role} ----------");
-                        AnsiConsole.WriteLine($"> MESSAGE  > {message.Content}");
-                        AnsiConsole.WriteLine($"> METADATA > {JsonSerializer.Serialize(message.Metadata)}");
-                        AnsiConsole.WriteLine($"> ------------------------------------");
-                    }
-                    continue;
-            }
-
-            //AnsiConsole.WriteLine();
-
-            await AnsiConsole.Status().StartAsync("Thinking...", async ctx =>
-            {
-                if (!enableDebug)
+                switch (question)
                 {
-                    ctx.Spinner(Spinner.Known.Default);
-                    ctx.SpinnerStyle(Style.Parse("yellow"));
+                    case "/c":
+                        AnsiConsole.Clear();
+                        continue;
+                    case "/ch":
+                        chat.RemoveRange(1, chat.Count - 1);
+                        AnsiConsole.WriteLine("Chat history cleared.");
+                        continue;
+
+                    case "/h":
+                        foreach (var message in chat)
+                        {
+                            AnsiConsole.WriteLine($"> ---------- {message.Role} ----------");
+                            AnsiConsole.WriteLine($"> MESSAGE  > {message.Content}");
+                            AnsiConsole.WriteLine($"> METADATA > {JsonSerializer.Serialize(message.Metadata)}");
+                            AnsiConsole.WriteLine($"> ------------------------------------");
+                        }
+                        continue;
                 }
 
-                logger.LogDebug("Searching information from the memory...");
+                await AnsiConsole.Status().StartAsync("Thinking...", async ctx =>
+                {
+                    if (!enableDebug)
+                    {
+                        ctx.Spinner(Spinner.Known.Default);
+                        ctx.SpinnerStyle(Style.Parse("yellow"));
+                    }
+
+                    logger.LogDebug("Searching information from the memory...");
+                    builder.Clear();
+                    await foreach (var result in knowledge.SearchAsync(question, 3))
+                    {
+                        if (result.Score < 0.7)
+                        {
+                            builder.AppendLine(result.Record.Content);
+                        }
+                    }
+                    if (builder.Length > 0)
+                    {
+                        logger.LogDebug("Found information from the memory:" + Environment.NewLine + builder.ToString());
+
+                        builder.Insert(0, "Here's some additional information you can use to answer the question: ");
+
+                        chat.AddSystemMessage(builder.ToString());
+                    }
+                });
+
+                AnsiConsole.WriteLine();
+                AnsiConsole.WriteLine("🤖: Formulating answer...");
                 builder.Clear();
-                //var questionVector = await embeddingGenerator.(question);
-                await foreach (var result in knowledge.SearchAsync(question, 3))
+                chat.AddUserMessage(question);
+                var firstLine = true;
+                await foreach (var message in ai.GetStreamingChatMessageContentsAsync(chat, openAIPromptExecutionSettings, kernel))
                 {
-                     if (result.Score < 0.7) builder.AppendLine(result.Record.Content);
-                }
-                if (builder.Length > 0)
-                {
-                    logger.LogDebug("Found information from the memory:" + Environment.NewLine + builder.ToString());
-
-                    builder.Insert(0, "Here's some additional information you can use to answer the question: ");
-
-                    chat.AddSystemMessage(builder.ToString());
-                }
-            });
-
-            AnsiConsole.WriteLine();
-            AnsiConsole.WriteLine("🤖: Formulating answer...");
-            builder.Clear();
-            chat.AddUserMessage(question);
-            var firstLine = true;
-            await foreach (var message in ai.GetStreamingChatMessageContentsAsync(chat, openAIPromptExecutionSettings, kernel))
-            {
-                if (!enableDebug)
-                    if (firstLine && message.Content != null && message.Content.Length > 0)
+                    if (!enableDebug)
                     {
-                        AnsiConsole.Cursor.MoveUp();
-                        AnsiConsole.WriteLine("                                  ");
-                        AnsiConsole.Cursor.MoveUp();
-                        AnsiConsole.Write($"🤖: ");
-                        firstLine = false;
+                        if (firstLine && message.Content != null && message.Content.Length > 0)
+                        {
+                            AnsiConsole.Cursor.MoveUp();
+                            AnsiConsole.WriteLine("                                  ");
+                            AnsiConsole.Cursor.MoveUp();
+                            AnsiConsole.Write($"🤖: ");
+                            firstLine = false;
+                        }
                     }
-                AnsiConsole.Write(message.Content ?? string.Empty);
-                builder.Append(message.Content);
+                    AnsiConsole.Write(message.Content ?? string.Empty);
+                    builder.Append(message.Content);
+                }
+                AnsiConsole.WriteLine();
+
+                chat.AddAssistantMessage(builder.ToString());
             }
-            AnsiConsole.WriteLine();
-
-
-            chat.AddAssistantMessage(builder.ToString());
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("non-interactive", StringComparison.OrdinalIgnoreCase))
+        {
+            logger?.LogWarning(ex, "Interactive console not available; switching to passive wait mode.");
+            AnsiConsole.MarkupLine("[yellow]Interactive console not available. Waiting indefinitely to avoid CrashLoopBackOff.[/]");
+            await Task.Delay(Timeout.InfiniteTimeSpan);
         }
     }
 }
