@@ -32,8 +32,10 @@ public class Memory
 
 public class ChatBot
 {
-    private readonly string azureOpenAIEndpoint;
-    private readonly string azureOpenAIApiKey;
+    private readonly string chatModelEndpoint;
+    private readonly string chatModelApiKey;
+    private readonly string embeddingModelEndpoint;
+    private readonly string embeddingModelApiKey;
     private readonly string embeddingModelDeploymentName;
     private readonly string chatModelDeploymentName;
     private readonly string sqlConnectionString;
@@ -49,11 +51,13 @@ public class ChatBot
         }
 
         // Read from environment variables (works for both .env and container env vars)
-        azureOpenAIEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_ENDPOINT") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
-        azureOpenAIApiKey = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_APIKEY") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
+        chatModelEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_ENDPOINT") ?? string.Empty;
+        chatModelApiKey = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_APIKEY") ?? string.Empty;
+        embeddingModelEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
+        embeddingModelApiKey = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
         embeddingModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_DEPLOYMENT") ?? string.Empty;
         chatModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_DEPLOYMENT") ?? string.Empty;
-        sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVER_CONNECTIONSTRING") ?? string.Empty;
+        sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVERDB_CONNECTIONSTRING") ?? string.Empty;
         sqlTableName = Environment.GetEnvironmentVariable("MSSQL_TABLE_NAME") ?? "ChatMemories";
     }
 
@@ -88,16 +92,20 @@ public class ChatBot
             });
             sc.AddKernel();
 
-            if (string.IsNullOrEmpty(azureOpenAIApiKey))
+            if (string.IsNullOrEmpty(chatModelApiKey))
             {
                 var credentials = new DefaultAzureCredential();
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, azureOpenAIEndpoint, credentials);
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, azureOpenAIEndpoint, credentials);
+                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, credentials);
+            }
+            if (string.IsNullOrEmpty(embeddingModelApiKey))
+            {
+                var credentials = new DefaultAzureCredential();
+                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, credentials);
             }
             else
             {
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, azureOpenAIEndpoint, azureOpenAIApiKey);
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, azureOpenAIEndpoint, azureOpenAIApiKey);
+                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, chatModelApiKey);
+                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, embeddingModelApiKey);
             }
 
             var services = sc.BuildServiceProvider();

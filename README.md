@@ -36,7 +36,7 @@ Create a `.env` file starting from the `.env.sample` file:
 - `CONNECTION_AIEMBEDDING_DEPLOYMENT`: the deployment name of the embedding model
 - `CONNECTION_AICHAT_DEPLOYMENT`: the deployment name of the chat model
 
-- `CONNECTION_SQLSERVER_CONNECTIONSTRING`: the connection string to the Azure SQL database where you want to deploy the database objects and sample data
+- `CONNECTION_SQLSERVERDB_CONNECTIONSTRING`: the connection string to the Azure SQL database where you want to deploy the database objects and sample data
 - `MSSQL_TABLE_NAME`: the name of the table where the chatbot will store long-term memories
 
 ### Database

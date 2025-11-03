@@ -20,7 +20,7 @@ services:
       # CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
 
       # # External SQL Database configuration (Azure SQL Database)
-      # CONNECTION_SQLSERVER_CONNECTIONSTRING: "${CONNECTION_SQLSERVER_CONNECTIONSTRING}"
+      # CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
       # MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
     # Optionally use env_file instead of environment variables above
     env_file:
@@ -46,7 +46,7 @@ services:
       # CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
 
       # # External SQL Database configuration (Azure SQL Database)
-      # CONNECTION_SQLSERVER_CONNECTIONSTRING: "${CONNECTION_SQLSERVER_CONNECTIONSTRING}"
+      # CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
       # MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
     # Optionally use env_file instead of environment variables above
     env_file:

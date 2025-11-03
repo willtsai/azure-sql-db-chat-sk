@@ -1,11 +1,19 @@
 extension radius
 
+param subscriptionId string = '66d1209e-1382-45d3-99bb-650e6bf63fc0'
+param resourceGroupName string = 'ignite2025-azure-dev'
+
 resource environment 'Applications.Core/environments@2023-10-01-preview' = {
   name: 'azure-dev'
   properties: {
     compute: {
       kind: 'kubernetes'   // Required. The kind of container runtime to use
       namespace: 'azure-dev' // Required. The Kubernetes namespace in which to render application resources
+    }
+    providers: {
+      azure: {
+        scope: '/subscriptions/${subscriptionId}/resourceGroups/${resourceGroupName}'
+      }
     }
     recipes: {
       'Radius.Resources/sqlServerDatabases': {
@@ -21,17 +29,12 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
       }
       'Radius.Resources/aiModels': {
         default: {
-          templateKind: 'terraform'
-          templatePath: 'git::https://github.com/willtsai/radius-recipes.git//recipes/aiModels/azure-openai'
+          templateKind: 'bicep'
+          templatePath: 'ghcr.io/willtsai/recipes/openai-azure:latest'
           parameters: {
-            enable_pii_filter: true
+            enable_jailbreak_filter: false
           }
         }
-      }
-    }
-    providers: {
-      azure: {
-        scope: '/subscriptions/66d1209e-1382-45d3-99bb-650e6bf63fc0/resourceGroups/ignite2025-azure-dev'
       }
     }
   }

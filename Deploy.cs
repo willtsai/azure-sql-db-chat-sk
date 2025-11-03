@@ -19,13 +19,13 @@ class DatabaseUtils
             Env.Load(envFile);
         }
 
-        string azureOpenAIEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_ENDPOINT") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
-        string azureOpenAIApiKey = Environment.GetEnvironmentVariable("CONNECTION_AICHAT_APIKEY") ?? Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
+        string embeddingModelEndpoint = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_ENDPOINT") ?? string.Empty;
+        string embeddingModelApiKey = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_APIKEY") ?? string.Empty;
         string embeddingModelDeploymentName = Environment.GetEnvironmentVariable("CONNECTION_AIEMBEDDING_DEPLOYMENT") ?? string.Empty;
-        string sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVER_CONNECTIONSTRING") ?? string.Empty;
+        string sqlConnectionString = Environment.GetEnvironmentVariable("CONNECTION_SQLSERVERDB_CONNECTIONSTRING") ?? string.Empty;
 
         if (string.IsNullOrEmpty(sqlConnectionString)) {
-            throw new ApplicationException("CONNECTION_SQLSERVER_CONNECTIONSTRING environment variable not set or empty.");
+            throw new ApplicationException("CONNECTION_SQLSERVERDB_CONNECTIONSTRING environment variable not set or empty.");
         }
         
         var csb = new SqlConnectionStringBuilder(sqlConnectionString);
@@ -44,8 +44,8 @@ class DatabaseUtils
         };
 
         Dictionary<string, string> variables = new() {
-            {"CONNECTION_AIEMBEDDING_ENDPOINT", azureOpenAIEndpoint},
-            {"CONNECTION_AIEMBEDDING_APIKEY", azureOpenAIApiKey},
+            {"CONNECTION_AIEMBEDDING_ENDPOINT", embeddingModelEndpoint},
+            {"CONNECTION_AIEMBEDDING_APIKEY", embeddingModelApiKey},
             {"CONNECTION_AIEMBEDDING_DEPLOYMENT", embeddingModelDeploymentName}
         };
 

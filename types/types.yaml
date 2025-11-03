@@ -93,9 +93,9 @@ types:
               type: string
               description: "(Read-only) Whether public network access is enabled or disabled"
               readOnly: true
-            piiFilterEnabled:
+            jailbreakFilterEnabled:
               type: boolean
-              description: "(Read-only) Whether PII (Personally Identifiable Information) content filtering is enabled"
+              description: "(Read-only) Whether jailbreak content filtering is enabled"
               readOnly: true
             region:
               type: string
@@ -156,7 +156,7 @@ types:
       - CONNECTION_SQLSERVER_DATABASE: The database name
       - CONNECTION_SQLSERVER_USERNAME: The database username
       - CONNECTION_SQLSERVER_PASSWORD: The database password
-      - CONNECTION_SQLSERVER_CONNECTIONSTRING: A complete connection string
+      - CONNECTION_SQLSERVERDB_CONNECTIONSTRING: A complete connection string
 
     apiVersions:
       '2025-11-01-preview':

@@ -22,6 +22,17 @@ resource chatbot 'Applications.Core/containers@2023-10-01-preview' = {
     container: {
       image: 'ghcr.io/willtsai/azure-sql-db-chat-sk:azure'
     }
+    connections: {
+      aichat: {
+        source: chatModel.id
+      }
+      aiembedding: {
+        source: embeddingModel.id
+      }
+      sqlserverdb: {
+        source: sqlServerDb.id
+      }
+    }
   }
 }
 
