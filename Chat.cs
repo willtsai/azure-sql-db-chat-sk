@@ -115,7 +115,7 @@ public class ChatBot
 
             if (enableDebug)
             {
-                logger.LogInformation($"AI Endpoint: {azureOpenAIEndpoint}, Embedding: {embeddingModelDeploymentName}, Chat: {chatModelDeploymentName}");
+                logger.LogInformation($"Embedding AI Endpoint: {embeddingModelEndpoint}, Embedding: {embeddingModelDeploymentName}, Chat AI Endpoint: {chatModelEndpoint}, Chat: {chatModelDeploymentName}");
             }
 
             AnsiConsole.WriteLine("Initializing plugins...");             
