@@ -20,7 +20,7 @@ resource chatbot 'Applications.Core/containers@2023-10-01-preview' = {
     application: insurancechat.id
     environment: environment
     container: {
-      image: 'ghcr.io/willtsai/azure-sql-db-chat-sk:azure4'
+      image: 'ghcr.io/willtsai/azure-sql-db-chat-sk:azure'
       env: {
         MSSQL_TABLE_NAME: {
           value: 'ChatMemories'
