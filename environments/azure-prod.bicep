@@ -21,7 +21,8 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
           templateKind: 'bicep'
           templatePath: 'ghcr.io/willtsai/recipes/sqlserverdb-azure:latest'
           parameters: {
-            sku: 'S1'
+            sku: 'P1'
+            enableMultiZone: true
             enableDisasterRecovery: true
             enableTransparentDataEncryption: true
           }

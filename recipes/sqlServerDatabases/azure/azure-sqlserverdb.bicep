@@ -17,11 +17,14 @@ param database string = context.resource.name
 @description('SKU name for the SQL database (for example: Basic, S0, S1, P1, GP_Gen5_2)')
 param sku string = 'Basic'
 
-@description('Whether to enable geo-backups to support disaster recovery scenarios')
+@description('Whether to enable zone-backups to support disaster recovery scenarios')
 param enableDisasterRecovery bool = false
 
 @description('Whether to enable transparent data encryption (TDE) for the database')
 param enableTransparentDataEncryption bool = true
+
+@description('Enable zone redundancy (multi-zone) for the database if supported by the selected SKU tier. Premium (DTU) and BusinessCritical (vCore) tiers support zone redundancy; others will ignore this flag.')
+param enableMultiZone bool = false
 
 @description('The user-defined tags that will be applied to the resource. Default is null')
 param tags object = {}
@@ -37,7 +40,7 @@ var computedSkuTier = sku == 'Basic'
   ? 'Basic'
   : sku == 'S0' || sku == 'S1' || sku == 'S2' || sku == 'S3'
     ? 'Standard'
-    : sku == 'P1' || sku == 'P2' || sku == 'P3'
+    : sku == 'P1' || sku == 'P2' || sku == 'P3' || sku == 'P4' || sku == 'P6' || sku == 'P11'
       ? 'Premium'
       : startsWith(toLower(sku), 'gp_')
         ? 'GeneralPurpose'
@@ -48,6 +51,23 @@ var computedSkuTier = sku == 'Basic'
             : 'Standard'
 
 var mssqlPort = 1433
+
+// Zone redundancy support (currently only Premium DTU or BusinessCritical vCore tiers). Hyperscale & GeneralPurpose ignored for this property.
+var multiZoneSupported = (computedSkuTier == 'Premium' || computedSkuTier == 'BusinessCritical')
+
+// Effective enablement (must be requested AND supported)
+var multiZoneEnabled = enableMultiZone && multiZoneSupported
+
+// Reason string for clarity in outputs when not supported
+var multiZoneReason = multiZoneSupported ? '' : 'Zone redundancy only supported for Premium or BusinessCritical tiers; current tier: ${computedSkuTier}'
+
+// Build properties object conditionally to avoid sending zoneRedundant for unsupported tiers (which triggers ProvisioningDisabled)
+var dbProperties = multiZoneEnabled ? {
+  requestedBackupStorageRedundancy: 'Zone'
+  zoneRedundant: true
+} : {
+  requestedBackupStorageRedundancy: enableDisasterRecovery ? 'Zone' : 'Local'
+}
 
 resource mssql 'Microsoft.Sql/servers@2021-02-01-preview' = {
   name: '${context.resource.name}-${uniqueString(context.resource.id, resourceGroup().id)}'
@@ -76,9 +96,7 @@ resource db 'Microsoft.Sql/servers/databases@2021-02-01-preview' = {
     name: sku
     tier: computedSkuTier
   }
-  properties: {
-    requestedBackupStorageRedundancy: enableDisasterRecovery ? 'Geo' : 'Local'
-  }
+  properties: dbProperties
 }
 
 resource transparentDataEncryption 'Microsoft.Sql/servers/databases/transparentDataEncryption@2021-02-01-preview' = {
@@ -95,6 +113,11 @@ output result object = {
     port: mssqlPort
     database: database
     username: adminLogin
+    multiZoneEnabled: multiZoneEnabled
+    multiZoneRequested: enableMultiZone
+    multiZoneEffective: multiZoneEnabled
+    multiZoneSupported: multiZoneSupported
+    multiZoneReason: multiZoneReason
   }
   secrets: {
     #disable-next-line outputs-should-not-contain-secrets

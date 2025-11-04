@@ -23,6 +23,7 @@ resource environment 'Applications.Core/environments@2023-10-01-preview' = {
           parameters: {
             sku: 'Basic'
             enableDisasterRecovery: false
+            enableMultiZone: false
             enableTransparentDataEncryption: true
           }
         }
