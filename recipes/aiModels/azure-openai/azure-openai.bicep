@@ -161,15 +161,7 @@ resource modelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2024-
   }
 }
 
-@secure()
 output result object = {
-  resources: concat(
-    [
-      cognitiveAccount.id
-      modelDeployment.id
-    ],
-    shouldCreateJailbreakPolicy ? [jailbreakPolicy.id] : []
-  )
   values: {
     apiVersion: api_version
     endpoint: cognitiveAccount.properties.endpoint
