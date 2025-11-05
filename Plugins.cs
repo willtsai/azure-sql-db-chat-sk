@@ -8,6 +8,7 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using Microsoft.SemanticKernel.Memory;
 using DotNetEnv;
+using azure_sql_sk.Services;
 
 namespace azure_sql_sk;
 
@@ -18,11 +19,12 @@ public class CommunicationHistory {
     public required string Details { get; set; }
 }
 
-public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connectionString)
+public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connectionString, IConversationService conversationService)
 {   
     private readonly ILogger logger = logger;
     private readonly Kernel kernel = kernel;        
     private readonly string connectionString = connectionString;
+    private readonly IConversationService conversationService = conversationService;
 
     [KernelFunction("query_customers_table")]
     [Description("""
@@ -45,7 +47,6 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
     {        
         logger.LogInformation($"Querying the database for '{logical_sql_query}'");
 
-        var ai = kernel.GetRequiredService<IChatCompletionService>();
         var chat = new ChatHistory(@"You create T-SQL queries based on the given user request and the provided schema. Just return T-SQL query to be executed. Do not return other text or explanation. Don't use markdown or any wrappers.
         The database schema is the following:
 
@@ -74,14 +75,14 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
         ");
 
         chat.AddUserMessage(logical_sql_query);
-        var response = await ai.GetChatMessageContentAsync(chat);
-        if (response.Content == null)
+        var response = await conversationService.GetChatCompletionAsync(chat);
+        if (string.IsNullOrEmpty(response))
         {
             logger.LogWarning("AI was not able to generate a SQL query.");
             return [];
         }
 
-        string sqlQuery = response.Content.Replace("```sql", "").Replace("```", "");
+        string sqlQuery = response.Replace("```sql", "").Replace("```", "");
 
         logger.LogInformation($"Executing the following query: {sqlQuery}");
         
@@ -108,7 +109,6 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
     {        
         logger.LogInformation($"Querying the database for '{logical_sql_query}'");
 
-        var ai = kernel.GetRequiredService<IChatCompletionService>();
         var chat = new ChatHistory(@"You create T-SQL queries based on the given user request and the provided schema. Just return T-SQL query to be executed. Do not return other text or explanation. Don't use markdown or any wrappers.     
         The database schema is the following:
 
@@ -126,14 +126,14 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
         ");
 
         chat.AddUserMessage(logical_sql_query);
-        var response = await ai.GetChatMessageContentAsync(chat);
-        if (response.Content == null)
+        var response = await conversationService.GetChatCompletionAsync(chat);
+        if (string.IsNullOrEmpty(response))
         {
             logger.LogWarning("AI was not able to generate a SQL query.");
             return [];
         }
 
-        string sqlQuery = response.Content.Replace("```sql", "").Replace("```", "");
+        string sqlQuery = response.Replace("```sql", "").Replace("```", "");
 
         logger.LogInformation($"Executing the following query: {sqlQuery}");
         
@@ -164,7 +164,6 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
     {        
         logger.LogInformation($"Querying the database for '{logical_sql_query}'");
 
-        var ai = kernel.GetRequiredService<IChatCompletionService>();
         var chat = new ChatHistory(@"You create T-SQL queries based on the given user request and the provided schema. Just return T-SQL query to be executed. Do not return other text or explanation. Don't use markdown or any wrappers.
         The database schema is the following:
 
@@ -187,14 +186,14 @@ public class SearchDatabasePlugin(Kernel kernel, ILogger logger, string connecti
         ");
 
         chat.AddUserMessage(logical_sql_query);
-        var response = await ai.GetChatMessageContentAsync(chat);
-        if (response.Content == null)
+        var response = await conversationService.GetChatCompletionAsync(chat);
+        if (string.IsNullOrEmpty(response))
         {
             logger.LogWarning("AI was not able to generate a SQL query.");
             return [];
         }
 
-        string sqlQuery = response.Content.Replace("```sql", "").Replace("```", "");
+        string sqlQuery = response.Replace("```sql", "").Replace("```", "");
 
         logger.LogInformation($"Executing the following query: {sqlQuery}");
         

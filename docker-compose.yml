@@ -2,8 +2,9 @@ version: '3.8'
 
 services:
   # ============================================
-  # Chat application with automatic database initialization
-  # On startup: Runs database deployment (deploy), then starts chat
+  # Chat application with Dapr enabled (default)
+  # On startup: Generates Dapr components, runs database deployment, then starts chat
+  # Requires Dapr sidecar to be injected by Kubernetes or run separately
   # ============================================
   chatbot:
     build:
@@ -12,19 +13,62 @@ services:
     container_name: azure-sql-chat-app
     stdin_open: true  # Enable interactive mode
     tty: true         # Allocate pseudo-TTY for interactive chat
-    # environment:
-      # Azure OpenAI configuration
-      # CONNECTION_AICHAT_ENDPOINT: "${CONNECTION_AICHAT_ENDPOINT}"
-      # CONNECTION_AICHAT_APIKEY: "${CONNECTION_AICHAT_APIKEY}"
-      # CONNECTION_AIEMBEDDING_DEPLOYMENT: "${CONNECTION_AIEMBEDDING_DEPLOYMENT}"
-      # CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
-
-      # # External SQL Database configuration (Azure SQL Database)
-      # CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
-      # MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
+    environment:
+      # Dapr configuration (DAPR_ENABLED=true is baked into image)
+      # DAPR_ENABLED: "true"  # Hardcoded in Dockerfile, uncomment to override
+      DAPR_HTTP_PORT: "${DAPR_HTTP_PORT:-3500}"
+      
+      # AI Chat Connection (injected by Radius or set in .env)
+      CONNECTION_AICHAT_ENDPOINT: "${CONNECTION_AICHAT_ENDPOINT}"
+      CONNECTION_AICHAT_APIKEY: "${CONNECTION_AICHAT_APIKEY}"
+      CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
+      CONNECTION_AICHAT_MODEL: "${CONNECTION_AICHAT_MODEL}"
+      CONNECTION_AICHAT_APIVERSION: "${CONNECTION_AICHAT_APIVERSION}"
+      
+      # AI Embedding Connection
+      CONNECTION_AIEMBEDDING_ENDPOINT: "${CONNECTION_AIEMBEDDING_ENDPOINT}"
+      CONNECTION_AIEMBEDDING_APIKEY: "${CONNECTION_AIEMBEDDING_APIKEY}"
+      CONNECTION_AIEMBEDDING_DEPLOYMENT: "${CONNECTION_AIEMBEDDING_DEPLOYMENT}"
+      CONNECTION_AIEMBEDDING_MODEL: "${CONNECTION_AIEMBEDDING_MODEL}"
+      CONNECTION_AIEMBEDDING_APIVERSION: "${CONNECTION_AIEMBEDDING_APIVERSION}"
+      
+      # SQL Server Connection
+      CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
+      MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
     # Optionally use env_file instead of environment variables above
     env_file:
       - .env
+
+  # ============================================
+  # Chat application with legacy mode (direct Azure OpenAI)
+  # Use: docker-compose --profile legacy up chatbot-legacy
+  # ============================================
+  chatbot-legacy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: azure-sql-chat-app-legacy
+    stdin_open: true
+    tty: true
+    environment:
+      # Disable Dapr for legacy mode
+      DAPR_ENABLED: "false"
+      
+      # AI Connections (must be Azure OpenAI for legacy mode)
+      CONNECTION_AICHAT_ENDPOINT: "${CONNECTION_AICHAT_ENDPOINT}"
+      CONNECTION_AICHAT_APIKEY: "${CONNECTION_AICHAT_APIKEY}"
+      CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
+      CONNECTION_AIEMBEDDING_ENDPOINT: "${CONNECTION_AIEMBEDDING_ENDPOINT}"
+      CONNECTION_AIEMBEDDING_APIKEY: "${CONNECTION_AIEMBEDDING_APIKEY}"
+      CONNECTION_AIEMBEDDING_DEPLOYMENT: "${CONNECTION_AIEMBEDDING_DEPLOYMENT}"
+      
+      # SQL Server Connection
+      CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
+      MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
+    env_file:
+      - .env
+    profiles:
+      - legacy
 
   # ============================================
   # Chat application with debug mode
@@ -38,17 +82,19 @@ services:
     command: chat --debug  # Override default CMD
     stdin_open: true
     tty: true
-    # environment:
-      # Azure OpenAI configuration
-      # CONNECTION_AICHAT_ENDPOINT: "${CONNECTION_AICHAT_ENDPOINT}"
-      # CONNECTION_AICHAT_APIKEY: "${CONNECTION_AICHAT_APIKEY}"
-      # CONNECTION_AIEMBEDDING_DEPLOYMENT: "${CONNECTION_AIEMBEDDING_DEPLOYMENT}"
-      # CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
-
-      # # External SQL Database configuration (Azure SQL Database)
-      # CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
-      # MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
-    # Optionally use env_file instead of environment variables above
+    environment:
+      # DAPR_ENABLED: "true"  # Hardcoded in Dockerfile
+      DAPR_HTTP_PORT: "${DAPR_HTTP_PORT:-3500}"
+      CONNECTION_AICHAT_ENDPOINT: "${CONNECTION_AICHAT_ENDPOINT}"
+      CONNECTION_AICHAT_APIKEY: "${CONNECTION_AICHAT_APIKEY}"
+      CONNECTION_AICHAT_DEPLOYMENT: "${CONNECTION_AICHAT_DEPLOYMENT}"
+      CONNECTION_AICHAT_MODEL: "${CONNECTION_AICHAT_MODEL}"
+      CONNECTION_AIEMBEDDING_ENDPOINT: "${CONNECTION_AIEMBEDDING_ENDPOINT}"
+      CONNECTION_AIEMBEDDING_APIKEY: "${CONNECTION_AIEMBEDDING_APIKEY}"
+      CONNECTION_AIEMBEDDING_DEPLOYMENT: "${CONNECTION_AIEMBEDDING_DEPLOYMENT}"
+      CONNECTION_AIEMBEDDING_MODEL: "${CONNECTION_AIEMBEDDING_MODEL}"
+      CONNECTION_SQLSERVERDB_CONNECTIONSTRING: "${CONNECTION_SQLSERVERDB_CONNECTIONSTRING}"
+      MSSQL_TABLE_NAME: "${MSSQL_TABLE_NAME:-ChatMemories}"
     env_file:
       - .env
     profiles:

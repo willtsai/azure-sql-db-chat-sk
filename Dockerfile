@@ -10,9 +10,10 @@ WORKDIR /src
 COPY *.csproj ./
 RUN dotnet restore
 
-# Copy source code and SQL scripts
+# Copy source code, SQL scripts, and services
 COPY *.cs ./
 COPY sql/ ./sql/
+COPY Services/ ./Services/
 
 # Build the application in Release mode
 RUN dotnet publish -c Release -o /app/publish --no-restore
@@ -23,11 +24,15 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/runtime:9.0-alpine AS runtime
 WORKDIR /app
 
-# Install ICU libraries for globalization support (required by .NET)
-RUN apk add --no-cache icu-libs
+# Install dependencies: ICU for .NET globalization, bash and curl for scripts
+RUN apk add --no-cache icu-libs bash curl
 
-# Set environment variables for ICU
+# Set environment variables
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false
+ENV DAPR_ENABLED=true
+
+# Create directories for Dapr components
+RUN mkdir -p /dapr/components
 
 # Create non-root user for security
 RUN addgroup -g 1000 appgroup && \
@@ -39,12 +44,17 @@ COPY --from=build /app/publish ./
 # Copy SQL migration scripts (required by DbUp)
 COPY --from=build /src/sql ./sql/
 
+# Copy scripts
+COPY scripts/ ./scripts/
+
 # Copy entrypoint script
 COPY docker-entrypoint.sh ./
 
-# Make entrypoint script executable and set ownership to non-root user
+# Make scripts executable and set ownership to non-root user
 RUN chmod +x docker-entrypoint.sh && \
-    chown -R appuser:appgroup /app
+    chmod +x scripts/generate-dapr-components.sh && \
+    chown -R appuser:appgroup /app && \
+    chown -R appuser:appgroup /dapr
 
 # Switch to non-root user
 USER appuser
@@ -62,5 +72,5 @@ CMD ["chat"]
 
 # Labels for metadata
 LABEL maintainer="Azure SQL DB Chat Team"
-LABEL description="Insurance chatbot demo with Semantic Kernel, RAG, and NL2SQL"
-LABEL version="1.0"
+LABEL description="Insurance chatbot demo with Semantic Kernel, RAG, and NL2SQL with Dapr support"
+LABEL version="2.0"

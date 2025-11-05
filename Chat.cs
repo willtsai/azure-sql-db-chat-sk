@@ -14,6 +14,7 @@ using Microsoft.Extensions.VectorData;
 using System.Diagnostics;
 using System.Threading;
 using Microsoft.Data.SqlClient;
+using azure_sql_sk.Services;
 
 #pragma warning disable SKEXP0010
 
@@ -77,7 +78,7 @@ public class ChatBot
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
         };
 
-        var (logger, kernel, ai, knowledge) = await AnsiConsole.Status().StartAsync("Booting up agent...", async ctx =>
+        var (logger, kernel, knowledge, conversationService) = await AnsiConsole.Status().StartAsync("Booting up agent...", async ctx =>
         {
             ctx.Spinner(Spinner.Known.Default);
             ctx.SpinnerStyle(Style.Parse("yellow"));
@@ -93,34 +94,64 @@ public class ChatBot
             });
             sc.AddKernel();
 
-            if (string.IsNullOrEmpty(chatModelApiKey))
+            var daprEnabled = Environment.GetEnvironmentVariable("DAPR_ENABLED")?.ToLowerInvariant() == "true";
+            var daprHttpPort = Environment.GetEnvironmentVariable("DAPR_HTTP_PORT") ?? "3500";
+
+            if (daprEnabled)
             {
-                var credentials = new DefaultAzureCredential();
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, credentials);
-            }
-            if (string.IsNullOrEmpty(embeddingModelApiKey))
-            {
-                var credentials = new DefaultAzureCredential();
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, credentials);
+                AnsiConsole.WriteLine("Using Dapr conversation service...");
+                sc.AddHttpClient();
+                sc.AddSingleton<IConversationService>(sp => 
+                    new DaprConversationService(
+                        sp.GetRequiredService<IHttpClientFactory>(),
+                        sp.GetRequiredService<ILogger<DaprConversationService>>(),
+                        $"http://localhost:{daprHttpPort}"));
+                
+                sc.AddKeyedSingleton<IChatCompletionService>("dapr-chat", (sp, key) =>
+                    new ConversationServiceChatCompletionAdapter(sp.GetRequiredService<IConversationService>()));
             }
             else
             {
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, chatModelApiKey);
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, embeddingModelApiKey);
+                AnsiConsole.WriteLine("Using direct Azure OpenAI integration (legacy mode)...");
+                
+                if (string.IsNullOrEmpty(chatModelApiKey))
+                {
+                    var credentials = new DefaultAzureCredential();
+                    sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, credentials);
+                }
+                else
+                {
+                    sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, chatModelApiKey);
+                }
+                
+                if (string.IsNullOrEmpty(embeddingModelApiKey))
+                {
+                    var credentials = new DefaultAzureCredential();
+                    sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, credentials);
+                }
+                else
+                {
+                    sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, embeddingModelApiKey);
+                }
+
+                sc.AddSingleton<IConversationService, SemanticKernelConversationService>();
             }
 
             var services = sc.BuildServiceProvider();
 
             var kernel = services.GetRequiredService<Kernel>();           
-            var logger = services.GetRequiredService<ILogger<Program>>();            
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            var conversationService = services.GetRequiredService<IConversationService>();
 
             if (enableDebug)
             {
-                logger.LogInformation($"Embedding AI Endpoint: {embeddingModelEndpoint}, Embedding: {embeddingModelDeploymentName}, Chat AI Endpoint: {chatModelEndpoint}, Chat: {chatModelDeploymentName}");
+                logger.LogInformation($"Dapr Enabled: {daprEnabled}");
+                logger.LogInformation($"Chat Endpoint: {chatModelEndpoint}, Deployment: {chatModelDeploymentName}");
+                logger.LogInformation($"Embedding Endpoint: {embeddingModelEndpoint}, Deployment: {embeddingModelDeploymentName}");
             }
 
             AnsiConsole.WriteLine("Initializing plugins...");             
-            kernel.Plugins.AddFromObject(new SearchDatabasePlugin(kernel, logger, sqlConnectionString));
+            kernel.Plugins.AddFromObject(new SearchDatabasePlugin(kernel, logger, sqlConnectionString, conversationService));
             foreach (var p in kernel.Plugins)
             {
                 foreach (var f in p.GetFunctionsMetadata())
@@ -138,8 +169,15 @@ public class ChatBot
             // var tools = await mcpClient.ListToolsAsync();
             // kernel.Plugins.AddFromFunctions("MyFirstMCP", tools.Select(x => x.AsKernelFunction()));
 
-            var ai = kernel.GetRequiredService<IChatCompletionService>();       
-            var eg = services.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();     
+            IEmbeddingGenerator<string, Embedding<float>> eg;
+            if (daprEnabled)
+            {
+                eg = new ConversationServiceEmbeddingGenerator(conversationService);
+            }
+            else
+            {
+                eg = services.GetRequiredService<IEmbeddingGenerator<string, Embedding<float>>>();
+            }
 
             AnsiConsole.WriteLine("Initializing vector store...");
 
@@ -163,8 +201,10 @@ public class ChatBot
 
             AnsiConsole.WriteLine("Done!");
 
-            return (logger, kernel, ai, knowledgeCollection);
+            return (logger, kernel, knowledgeCollection, conversationService);
         });
+
+        var ai = kernel.GetRequiredService<IChatCompletionService>();
 
         var isInteractiveConsole = AnsiConsole.Profile.Capabilities.Interactive && !Console.IsInputRedirected;
 

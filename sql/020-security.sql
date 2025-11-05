@@ -10,6 +10,10 @@ begin
 end
 go
 
+-- Only create credential if API key is provided (Azure OpenAI and some OpenAI-compatible services)
+-- For local llama.cpp without auth, this will be skipped
+$(if IS_AZURE_OPENAI = 1 or CONNECTION_AIEMBEDDING_APIKEY != '')
 create database scoped credential [$CONNECTION_AIEMBEDDING_ENDPOINT$]
 with identity = 'HTTPEndpointHeaders', secret = '{"api-key":"$CONNECTION_AIEMBEDDING_APIKEY$"}';
+$(endif)
 go

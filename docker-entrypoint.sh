@@ -1,25 +1,65 @@
-#!/bin/sh
+#!/bin/bash
 set -e
 
 echo "================================"
 echo "Azure SQL Chat - Starting up..."
 echo "================================"
 
+# Generate Dapr components if DAPR_ENABLED is true
+if [ "${DAPR_ENABLED}" = "true" ]; then
+    echo ""
+    echo "[0/3] Generating Dapr components from environment variables..."
+    ./scripts/generate-dapr-components.sh
+    
+    if [ $? -eq 0 ]; then
+        echo "[0/3] Dapr components generated successfully"
+    else
+        echo "[0/3] Warning: Dapr component generation failed, continuing anyway..."
+    fi
+fi
+
 # Run database deployment/initialization
 echo ""
-echo "[1/2] Running database deployment..."
+if [ "${DAPR_ENABLED}" = "true" ]; then
+    echo "[1/3] Running database deployment..."
+else
+    echo "[1/2] Running database deployment..."
+fi
 dotnet azure-sql-sk.dll deploy
 
 if [ $? -eq 0 ]; then
-    echo "[1/2] Database deployment completed successfully"
+    if [ "${DAPR_ENABLED}" = "true" ]; then
+        echo "[1/3] Database deployment completed successfully"
+    else
+        echo "[1/2] Database deployment completed successfully"
+    fi
 else
-    echo "[1/2] Database deployment failed!"
+    echo "Database deployment failed!"
     exit 1
+fi
+
+# Display configuration
+echo ""
+if [ "${DAPR_ENABLED}" = "true" ]; then
+    echo "[2/3] Configuration:"
+    echo "  Mode: Dapr (platform-agnostic)"
+    echo "  DAPR_HTTP_PORT: ${DAPR_HTTP_PORT:-3500}"
+    echo "  Chat Endpoint: ${CONNECTION_AICHAT_ENDPOINT}"
+    echo "  Embedding Endpoint: ${CONNECTION_AIEMBEDDING_ENDPOINT}"
+else
+    echo "[2/2] Configuration:"
+    echo "  Mode: Legacy (Direct Azure OpenAI)"
+    echo "  Chat Endpoint: ${CONNECTION_AICHAT_ENDPOINT}"
+    echo "  Embedding Endpoint: ${CONNECTION_AIEMBEDDING_ENDPOINT}"
 fi
 
 # Run the main application command (passed as arguments)
 echo ""
-echo "[2/2] Starting chat application..."
+if [ "${DAPR_ENABLED}" = "true" ]; then
+    echo "[3/3] Starting chat application..."
+else
+    echo "[2/2] Starting chat application..."
+fi
 echo "================================"
 echo ""
 

@@ -86,7 +86,20 @@ resource sqlServerDeployment 'apps/Deployment@v1' = {
                 name: 'MSSQL_PID'
                 value: 'Developer'
               }
+              {
+                name: 'MSSQL_ENABLE_POLYBASE'
+                value: '0'
+              }
+              {
+                name: 'MSSQL_MEMORY_LIMIT_MB'
+                value: '3072'
+              }
             ]
+            securityContext: {
+              capabilities: {
+                add: ['SYS_PTRACE']
+              }
+            }
             resources: {
               requests: {
                 memory: '2Gi'
@@ -97,6 +110,16 @@ resource sqlServerDeployment 'apps/Deployment@v1' = {
                 cpu: '2000m'
               }
             }
+          }
+        ]
+        # SQL Server 2025 requires special handling on ARM64/Apple Silicon
+        # The container runs with emulation but may have performance impact
+        tolerations: [
+          {
+            key: 'kubernetes.io/arch'
+            operator: 'Equal'
+            value: 'arm64'
+            effect: 'NoSchedule'
           }
         ]
       }
@@ -124,7 +147,7 @@ resource sqlServerService 'core/Service@v1' = {
     ports: [
       {
         port: port
-        targetPort: string(port)
+        targetPort: port
         protocol: 'TCP'
       }
     ]
