@@ -113,6 +113,8 @@ output result object = {
     port: mssqlPort
     database: database
     username: adminLogin
+    sku: sku
+    tier: computedSkuTier
     multiZoneEnabled: multiZoneEnabled
     multiZoneRequested: enableMultiZone
     multiZoneEffective: multiZoneEnabled

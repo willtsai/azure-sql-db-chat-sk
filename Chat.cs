@@ -249,21 +249,41 @@ public class ChatBot
                 builder.Clear();
                 chat.AddUserMessage(question);
                 var firstLine = true;
-                await foreach (var message in ai.GetStreamingChatMessageContentsAsync(chat, openAIPromptExecutionSettings, kernel))
+                try
                 {
-                    if (!enableDebug)
+                    await foreach (var message in ai.GetStreamingChatMessageContentsAsync(chat, openAIPromptExecutionSettings, kernel))
                     {
-                        if (firstLine && message.Content != null && message.Content.Length > 0)
+                        if (!enableDebug)
                         {
-                            AnsiConsole.Cursor.MoveUp();
-                            AnsiConsole.WriteLine("                                  ");
-                            AnsiConsole.Cursor.MoveUp();
-                            AnsiConsole.Write($"🤖: ");
-                            firstLine = false;
+                            if (firstLine && message.Content != null && message.Content.Length > 0)
+                            {
+                                AnsiConsole.Cursor.MoveUp();
+                                AnsiConsole.WriteLine("                                  ");
+                                AnsiConsole.Cursor.MoveUp();
+                                AnsiConsole.Write($"🤖: ");
+                                firstLine = false;
+                            }
                         }
+                        AnsiConsole.Write(message.Content ?? string.Empty);
+                        builder.Append(message.Content);
                     }
-                    AnsiConsole.Write(message.Content ?? string.Empty);
-                    builder.Append(message.Content);
+                }
+                catch (Exception ex) when (IsContentFilterException(ex))
+                {
+                    // Gracefully handle Azure OpenAI content filtering (HTTP 400 content_filter)
+                    logger?.LogInformation(ex, "Content filter triggered; informing user.");
+                    if (firstLine)
+                    {
+                        // Clean up spinner line if no content printed yet
+                        AnsiConsole.Cursor.MoveUp();
+                        AnsiConsole.WriteLine("                                  ");
+                        AnsiConsole.Cursor.MoveUp();
+                        AnsiConsole.Write("🤖: ");
+                    }
+                    var advisory = "Your prompt or the generated content was blocked by the service's safety/content filter. Please rephrase to avoid sensitive, violent, sexual, self-harm, hate, personal data, or jailbreaking attempts. Try focusing on factual, neutral wording.";
+                    AnsiConsole.MarkupLine($"[red]{advisory}[/]");
+                    builder.Clear();
+                    builder.Append(advisory);
                 }
                 AnsiConsole.WriteLine();
 
@@ -276,6 +296,27 @@ public class ChatBot
             AnsiConsole.MarkupLine("[yellow]Interactive console not available. Waiting indefinitely to avoid CrashLoopBackOff.[/]");
             await Task.Delay(Timeout.InfiniteTimeSpan);
         }
+    }
+
+    private static bool IsContentFilterException(Exception ex)
+    {
+        if (ex == null) return false;
+        // Match known Azure OpenAI content filter patterns
+        var msg = ex.Message ?? string.Empty;
+        if (msg.Contains("content_filter", StringComparison.OrdinalIgnoreCase)) return true;
+        // Some SDKs wrap status code info; attempt heuristic checks
+        if (msg.Contains("HTTP 400", StringComparison.OrdinalIgnoreCase) && msg.Contains("filter", StringComparison.OrdinalIgnoreCase)) return true;
+        // Inspect inner exceptions recursively (bounded depth)
+        var inner = ex.InnerException;
+        int depth = 0;
+        while (inner != null && depth < 3)
+        {
+            var im = inner.Message ?? string.Empty;
+            if (im.Contains("content_filter", StringComparison.OrdinalIgnoreCase)) return true;
+            inner = inner.InnerException;
+            depth++;
+        }
+        return false;
     }
 }
 
