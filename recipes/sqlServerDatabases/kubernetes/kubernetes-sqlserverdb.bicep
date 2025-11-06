@@ -9,8 +9,8 @@ extension kubernetes with {
 @description('The name of the SQL Server database to create')
 param database string = context.resource.properties.?database ?? context.resource.name
 
-@description('The database username')
-param username string = context.resource.properties.?username ?? '${context.application.name}-user'
+@description('SQL administrator username')
+param username string = 'sqladmin'
 
 @description('The SQL Server version to deploy. Supported values: "2017", "2019", "2022", "2025"')
 @allowed([
