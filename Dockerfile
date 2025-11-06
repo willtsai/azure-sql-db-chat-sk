@@ -24,8 +24,11 @@ RUN dotnet publish -c Release -o /app/publish --no-restore
 FROM mcr.microsoft.com/dotnet/runtime:9.0-alpine AS runtime
 WORKDIR /app
 
-# Install dependencies: ICU for .NET globalization, bash and curl for scripts
-RUN apk add --no-cache icu-libs bash curl
+# Install dependencies: ICU for .NET globalization, bash and curl for scripts, kubectl for Dapr component management
+RUN apk add --no-cache icu-libs bash curl && \
+    curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+    chmod +x kubectl && \
+    mv kubectl /usr/local/bin/
 
 # Set environment variables
 ENV DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=false

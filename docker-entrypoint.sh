@@ -5,14 +5,14 @@ echo "================================"
 echo "Azure SQL Chat - Starting up..."
 echo "================================"
 
-# Generate Dapr components if DAPR_ENABLED is true
+# Generate and apply Dapr components if DAPR_ENABLED is true
 if [ "${DAPR_ENABLED}" = "true" ]; then
     echo ""
-    echo "[0/3] Generating Dapr components from environment variables..."
+    echo "[0/3] Generating and applying Dapr components..."
     ./scripts/generate-dapr-components.sh
     
     if [ $? -eq 0 ]; then
-        echo "[0/3] Dapr components generated successfully"
+        echo "[0/3] Dapr components applied successfully"
     else
         echo "[0/3] Warning: Dapr component generation failed, continuing anyway..."
     fi
@@ -44,14 +44,12 @@ if [ "${DAPR_ENABLED}" = "true" ]; then
     echo "[2/3] Configuration:"
     echo "  Mode: Dapr (platform-agnostic)"
     echo "  DAPR_HTTP_PORT: ${DAPR_HTTP_PORT:-3500}"
-    echo "  Chat Endpoint: ${CONNECTION_AICHAT_ENDPOINT}"
-    echo "  Embedding Endpoint: ${CONNECTION_AIEMBEDDING_ENDPOINT}"
 else
     echo "[2/2] Configuration:"
     echo "  Mode: Legacy (Direct Azure OpenAI)"
-    echo "  Chat Endpoint: ${CONNECTION_AICHAT_ENDPOINT}"
-    echo "  Embedding Endpoint: ${CONNECTION_AIEMBEDDING_ENDPOINT}"
 fi
+echo "  Chat Endpoint: ${CONNECTION_AICHAT_ENDPOINT}"
+echo "  Embedding Endpoint: ${CONNECTION_AIEMBEDDING_ENDPOINT}"
 
 # Run the main application command (passed as arguments)
 echo ""
