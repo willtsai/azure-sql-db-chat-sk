@@ -9,9 +9,6 @@ extension kubernetes with {
 @description('The name of the SQL Server database to create')
 param database string = context.resource.properties.?database ?? context.resource.name
 
-@description('SQL administrator username')
-param username string = 'sqladmin'
-
 @description('The SQL Server version to deploy. Supported values: "2017", "2019", "2022", "2025"')
 @allowed([
   '2017'
@@ -157,10 +154,10 @@ output result object = {
     host: '${sqlServerService.metadata.name}.${sqlServerService.metadata.namespace}.svc.cluster.local'
     port: port
     database: database
-    username: username
+    username: 'sa'
   }
   secrets: {
     password: adminPassword
-    connectionString: 'Server=${sqlServerService.metadata.name}.${sqlServerService.metadata.namespace}.svc.cluster.local,${port};Database=${database};User Id=${username};Password=${adminPassword};TrustServerCertificate=True;Connection Timeout=30;'
+    connectionString: 'Server=${sqlServerService.metadata.name}.${sqlServerService.metadata.namespace}.svc.cluster.local,${port};Database=${database};User Id=sa;Password=${adminPassword};TrustServerCertificate=True;Connection Timeout=30;'
   }
 }
