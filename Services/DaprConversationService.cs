@@ -29,47 +29,57 @@ public class DaprConversationService : IConversationService
 
     public async Task<string> GetChatCompletionAsync(ChatHistory messages, CancellationToken ct = default)
     {
-        _logger.LogDebug($"Calling Dapr component '{ChatComponentName}' for chat completion");
+        _logger.LogDebug($"Calling Dapr conversation API with component '{ChatComponentName}'");
 
-        var request = new OpenAIRequest
+        // Dapr conversation API uses a different format
+        var conversationMessages = messages.Select(m => new
         {
-            Messages = messages.Select(m => new OpenAIMessage
-            {
-                Role = m.Role.ToString().ToLowerInvariant(),
-                Content = m.Content ?? string.Empty
-            }).ToList(),
-            Stream = false
+            role = m.Role.ToString().ToLowerInvariant(),
+            content = m.Content ?? string.Empty
+        }).ToList();
+
+        var request = new
+        {
+            inputs = conversationMessages,
+            parameters = new { }
         };
 
         var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0/invoke/{ChatComponentName}/method/v1/chat/completions",
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse",
             request,
             ct);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError($"Dapr conversation API error: {response.StatusCode} - {error}");
+            response.EnsureSuccessStatusCode();
+        }
 
-        var result = await response.Content.ReadFromJsonAsync<OpenAIResponse>(ct);
-        return result?.Choices?[0]?.Message?.Content ?? string.Empty;
+        var result = await response.Content.ReadFromJsonAsync<DaprConversationResponse>(ct);
+        return result?.Outputs?[0]?.Result ?? string.Empty;
     }
 
     public async IAsyncEnumerable<string> GetStreamingChatCompletionAsync(
         ChatHistory messages,
         [EnumeratorCancellation] CancellationToken ct = default)
     {
-        _logger.LogDebug($"Calling Dapr component '{ChatComponentName}' for streaming chat completion");
+        _logger.LogDebug($"Calling Dapr conversation API with component '{ChatComponentName}' (streaming)");
 
-        var request = new OpenAIRequest
+        var conversationMessages = messages.Select(m => new
         {
-            Messages = messages.Select(m => new OpenAIMessage
-            {
-                Role = m.Role.ToString().ToLowerInvariant(),
-                Content = m.Content ?? string.Empty
-            }).ToList(),
-            Stream = true
+            role = m.Role.ToString().ToLowerInvariant(),
+            content = m.Content ?? string.Empty
+        }).ToList();
+
+        var request = new
+        {
+            inputs = conversationMessages,
+            parameters = new { stream = true }
         };
 
         var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0/invoke/{ChatComponentName}/method/v1/chat/completions",
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse",
             request,
             ct);
 
@@ -88,10 +98,10 @@ public class DaprConversationService : IConversationService
                 var data = line.Substring(6).Trim();
                 if (data == "[DONE]") break;
 
-                OpenAIStreamChunk? chunk = null;
+                DaprConversationStreamChunk? chunk = null;
                 try
                 {
-                    chunk = JsonSerializer.Deserialize<OpenAIStreamChunk>(data);
+                    chunk = JsonSerializer.Deserialize<DaprConversationStreamChunk>(data);
                 }
                 catch (JsonException ex)
                 {
@@ -99,7 +109,7 @@ public class DaprConversationService : IConversationService
                     continue;
                 }
 
-                var content = chunk?.Choices?[0]?.Delta?.Content;
+                var content = chunk?.Result;
                 if (!string.IsNullOrEmpty(content))
                 {
                     yield return content;
@@ -110,25 +120,63 @@ public class DaprConversationService : IConversationService
 
     public async Task<ReadOnlyMemory<float>> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
     {
-        _logger.LogDebug($"Calling Dapr component '{EmbeddingComponentName}' for embedding generation");
+        _logger.LogDebug($"Calling Dapr conversation API with component '{EmbeddingComponentName}' for embedding");
 
-        var request = new OpenAIEmbeddingRequest
+        var request = new
         {
-            Input = text
+            inputs = new[] { text },
+            parameters = new { }
         };
 
         var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0/invoke/{EmbeddingComponentName}/method/v1/embeddings",
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{EmbeddingComponentName}/converse",
             request,
             ct);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogError($"Dapr conversation API error: {response.StatusCode} - {error}");
+            response.EnsureSuccessStatusCode();
+        }
 
-        var result = await response.Content.ReadFromJsonAsync<OpenAIEmbeddingResponse>(ct);
-        var embedding = result?.Data?[0]?.Embedding ?? Array.Empty<float>();
+        var result = await response.Content.ReadFromJsonAsync<DaprConversationEmbeddingResponse>(ct);
+        var embedding = result?.Outputs?[0]?.Embedding ?? Array.Empty<float>();
         return new ReadOnlyMemory<float>(embedding);
     }
 
+    // Dapr Conversation API response models
+    private class DaprConversationResponse
+    {
+        [JsonPropertyName("outputs")]
+        public List<DaprConversationOutput>? Outputs { get; set; }
+    }
+
+    private class DaprConversationOutput
+    {
+        [JsonPropertyName("result")]
+        public string? Result { get; set; }
+    }
+
+    private class DaprConversationStreamChunk
+    {
+        [JsonPropertyName("result")]
+        public string? Result { get; set; }
+    }
+
+    private class DaprConversationEmbeddingResponse
+    {
+        [JsonPropertyName("outputs")]
+        public List<DaprConversationEmbeddingOutput>? Outputs { get; set; }
+    }
+
+    private class DaprConversationEmbeddingOutput
+    {
+        [JsonPropertyName("embedding")]
+        public float[]? Embedding { get; set; }
+    }
+
+    // Legacy OpenAI format models (kept for reference, not used with Dapr conversation API)
     private class OpenAIRequest
     {
         [JsonPropertyName("messages")]
