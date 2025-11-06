@@ -31,23 +31,26 @@ public class DaprConversationService : IConversationService
     {
         _logger.LogDebug($"Calling Dapr conversation API with component '{ChatComponentName}'");
 
-        // Dapr conversation API uses a different format
-        var conversationMessages = messages.Select(m => new
-        {
-            role = m.Role.ToString().ToLowerInvariant(),
-            content = m.Content ?? string.Empty
-        }).ToList();
-
+        // Dapr conversation API expects ConversationRequest format
         var request = new
         {
-            inputs = conversationMessages,
-            parameters = new { }
+            conversationContext = "",
+            inputs = messages.Select(m => new
+            {
+                message = m.Content ?? string.Empty,
+                role = m.Role.ToString().ToLowerInvariant()
+            }).ToArray()
         };
 
-        var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse",
-            request,
-            ct);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post,
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        httpRequest.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+        var response = await _httpClient.SendAsync(httpRequest, ct);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -66,22 +69,29 @@ public class DaprConversationService : IConversationService
     {
         _logger.LogDebug($"Calling Dapr conversation API with component '{ChatComponentName}' (streaming)");
 
-        var conversationMessages = messages.Select(m => new
-        {
-            role = m.Role.ToString().ToLowerInvariant(),
-            content = m.Content ?? string.Empty
-        }).ToList();
-
         var request = new
         {
-            inputs = conversationMessages,
-            parameters = new { stream = true }
+            conversationContext = "",
+            inputs = messages.Select(m => new
+            {
+                message = m.Content ?? string.Empty,
+                role = m.Role.ToString().ToLowerInvariant()
+            }).ToArray(),
+            parameters = new 
+            { 
+                stream = true 
+            }
         };
 
-        var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse",
-            request,
-            ct);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post,
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{ChatComponentName}/converse")
+        {
+            Content = JsonContent.Create(request)
+        };
+
+        httpRequest.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+        var response = await _httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
 
         response.EnsureSuccessStatusCode();
 
@@ -122,16 +132,29 @@ public class DaprConversationService : IConversationService
     {
         _logger.LogDebug($"Calling Dapr conversation API with component '{EmbeddingComponentName}' for embedding");
 
+        // Dapr conversation API expects a ConversationRequest with specific structure
         var request = new
         {
-            inputs = new[] { text },
-            parameters = new { }
+            conversationContext = "",
+            inputs = new[] 
+            { 
+                new { 
+                    message = text,
+                    role = "user"
+                }
+            }
         };
 
-        var response = await _httpClient.PostAsJsonAsync(
-            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{EmbeddingComponentName}/converse",
-            request,
-            ct);
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, 
+            $"{_daprHttpEndpoint}/v1.0-alpha1/conversation/{EmbeddingComponentName}/converse")
+        {
+            Content = JsonContent.Create(request)
+        };
+        
+        // Ensure JSON content type
+        httpRequest.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
+
+        var response = await _httpClient.SendAsync(httpRequest, ct);
 
         if (!response.IsSuccessStatusCode)
         {
