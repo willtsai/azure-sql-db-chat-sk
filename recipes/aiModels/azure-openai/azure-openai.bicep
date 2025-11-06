@@ -11,7 +11,7 @@ param sku_name string = 'S0'
 param capacity int = 10
 
 @description('Azure OpenAI API version')
-param api_version string = '2024-02-15-preview'
+param api_version string = '2024-10-21'
 
 @description('Enable or disable public network access')
 @allowed(['Enabled', 'Disabled'])
@@ -21,7 +21,7 @@ param public_network_access string = 'Enabled'
 param tags object = {}
 
 @description('Enable jailbreak content filtering for chat/completions output')
-param enable_jailbreak_filter bool
+param enable_jailbreak_filter bool = false
 
 @description('Optional RAI policy name to use when jailbreak filtering is enabled. Leave blank to let this template create a policy automatically.')
 param jailbreak_policy_name string = ''

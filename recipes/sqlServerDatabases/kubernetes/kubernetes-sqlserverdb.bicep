@@ -30,8 +30,13 @@ var uniqueName = 'sqlserver-${uniqueString(context.resource.id)}'
 @description('The SQL Server image to use')
 var sqlServerImage = 'mcr.microsoft.com/mssql/server:${version}-latest'
 
-@description('SQL Server user password. Defaults to a unique generated value.')
-var password = uniqueString(context.resource.id, 'password')
+@description('SQL Server user password. Defaults to a unique generated value that satisfies SQL password complexity requirements.')
+param password string = ''
+
+var configuredPassword = context.resource.properties.?password ?? ''
+var defaultPassword = '${take(uniqueString(context.resource.id, 'password'), 8)}Aa1!'
+var providedPassword = empty(password) ? configuredPassword : password
+var adminPassword = empty(providedPassword) ? defaultPassword : providedPassword
 
 resource sqlServerDeployment 'apps/Deployment@v1' = {
   metadata: {
@@ -80,13 +85,26 @@ resource sqlServerDeployment 'apps/Deployment@v1' = {
               }
               {
                 name: 'MSSQL_SA_PASSWORD'
-                value: password
+                value: adminPassword
               }
               {
                 name: 'MSSQL_PID'
                 value: 'Developer'
               }
+              {
+                name: 'MSSQL_ENABLE_POLYBASE'
+                value: '0'
+              }
+              {
+                name: 'MSSQL_MEMORY_LIMIT_MB'
+                value: '3072'
+              }
             ]
+            securityContext: {
+              capabilities: {
+                add: ['SYS_PTRACE']
+              }
+            }
             resources: {
               requests: {
                 memory: '2Gi'
@@ -124,7 +142,6 @@ resource sqlServerService 'core/Service@v1' = {
     ports: [
       {
         port: port
-        targetPort: string(port)
         protocol: 'TCP'
       }
     ]
@@ -143,7 +160,7 @@ output result object = {
     username: username
   }
   secrets: {
-    password: password
-    connectionString: 'Server=${sqlServerService.metadata.name}.${sqlServerService.metadata.namespace}.svc.cluster.local,${port};Database=${database};User Id=${username};Password=${password};TrustServerCertificate=True;Connection Timeout=30;'
+    password: adminPassword
+    connectionString: 'Server=${sqlServerService.metadata.name}.${sqlServerService.metadata.namespace}.svc.cluster.local,${port};Database=${database};User Id=${username};Password=${adminPassword};TrustServerCertificate=True;Connection Timeout=30;'
   }
 }
