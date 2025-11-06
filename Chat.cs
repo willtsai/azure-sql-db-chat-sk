@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
+
 using Microsoft.SemanticKernel.Connectors.SqlServer;
 using DotNetEnv;
 using System.Text.Json;
@@ -72,7 +72,7 @@ public class ChatBot
         table.AddColumn(new TableColumn("[bold]Insurance Agent Assistant[/] v2.3").Centered());
         AnsiConsole.Write(table);
 
-        var openAIPromptExecutionSettings = new AzureOpenAIPromptExecutionSettings()
+        var openAIPromptExecutionSettings = new PromptExecutionSettings()
         {
             FunctionChoiceBehavior = FunctionChoiceBehavior.Auto()
         };
@@ -93,21 +93,15 @@ public class ChatBot
             });
             sc.AddKernel();
 
-            if (string.IsNullOrEmpty(chatModelApiKey))
-            {
-                var credentials = new DefaultAzureCredential();
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, credentials);
-            }
-            if (string.IsNullOrEmpty(embeddingModelApiKey))
-            {
-                var credentials = new DefaultAzureCredential();
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, credentials);
-            }
-            else
-            {
-                sc.AddAzureOpenAIChatCompletion(chatModelDeploymentName, chatModelEndpoint, chatModelApiKey);
-                sc.AddAzureOpenAIEmbeddingGenerator(embeddingModelDeploymentName, embeddingModelEndpoint, embeddingModelApiKey);
-            }
+            AIProviderFactory.ConfigureAIServices(
+                sc,
+                chatModelEndpoint,
+                chatModelApiKey,
+                chatModelDeploymentName,
+                embeddingModelEndpoint,
+                embeddingModelApiKey,
+                embeddingModelDeploymentName
+            );
 
             var services = sc.BuildServiceProvider();
 
