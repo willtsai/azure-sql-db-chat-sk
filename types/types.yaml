@@ -4,7 +4,7 @@ types:
     description: |
       The Radius.Resources/aiModels Resource Type deploys an AI model. It is always a part of a Radius Application.
       To deploy an AI model, add an `aiModels` resource to the application definition Bicep file
-      and specify the model to deploy (e.g. `gpt-35-turbo`, `gpt-4`, `text-embedding-3-small`).
+      and specify the model to deploy (e.g. `gpt-35-turbo`, `gpt-4`, `text-embedding-3-small`, `text-embedding-ada-002`).
       ```bicep
       extension radius
 
