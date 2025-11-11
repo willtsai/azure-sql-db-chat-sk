@@ -271,7 +271,7 @@ public class ChatBot
                 catch (Exception ex) when (IsContentFilterException(ex))
                 {
                     // Gracefully handle Azure OpenAI content filtering (HTTP 400 content_filter)
-                    logger?.LogInformation(ex, "Content filter triggered; informing user.");
+                    logger?.LogInformation("Content filter triggered; informing user.");
                     if (firstLine)
                     {
                         // Clean up spinner line if no content printed yet
