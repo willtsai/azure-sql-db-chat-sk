@@ -207,3 +207,272 @@ types:
               readOnly: true
           required:
             - environment
+
+  postgreSqlDatabases:  
+    description: |
+      The Radius.Data/postgreSQLDatabases Resource Type deploys a PostgresSQL database. To deploy a new PostgresSQL database, add the postgreSQLDatabases resource to the application definition Bicep file.
+      
+      ```
+      extension radius
+      param environment string 
+
+      resource database 'Radius.Data/postgreSqlDatabases@2025-08-01-preview' = {
+        name: 'database'
+        properties: {
+          application: myApplication.id
+          environment: environment
+        }
+      }
+      ```
+
+      To connect your container to the database, create a connection from the Container resource to the database as shown below. 
+      ```
+      resource myApplication 'Applications.Core/Applications@2023-10-01-preview' = { ... }
+
+      resource frontend 'Applications.Core/containers@2023-10-01-preview' = {
+        name: 'frontend'
+        properties: {
+          application: myApplication.id
+          environment: environment
+          container: {
+            image: 'frontend:1.25'
+            ports: {
+              web: {
+                containerPort: 8080
+              }
+            }
+          }
+          connections: {
+            postgresql: {
+              source: database.id
+            }
+          }
+        }
+      }
+      ```
+
+      The connection automatically injects environment variables into the container for all properties from the database. The environment variables are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. In this example, the connection name is `mysqldb` so the environment variables will be:
+ 
+      - CONNECTION_POSTGRESQL_DATABASE
+      - CONNECTION_POSTGRESQL_USERNAME
+      - CONNECTION_POSTGRESQL_PASSWORD
+      - CONNECTION_POSTGRESQL_HOST
+      - CONNECTION_POSTGRESQL_PORT
+    apiVersions:
+      '2025-08-01-preview':
+        schema: 
+          type: object
+          properties:
+            environment:
+              type: string
+              description: "(Required) The Radius Environment ID. Typically set by the rad CLI. Typically value should be `environment`."
+            application:
+              type: string
+              description: "(Optional) The Radius Application ID. `myApplication.id` for example."
+            size:
+              type: string
+              enum: ['S', 'M', 'L']
+              description: "(Optional) The size of the PostgreSQL database."
+            database:
+              type: string
+              description: The name of the database.
+              readOnly: true
+            host:
+              type: string
+              description: The host name used to connect to the database.
+              readOnly: true
+            port:
+              type: string
+              description: The port number used to connect to the database.
+              readOnly: true
+            username:
+              type: string
+              description: The username for connecting to the database.
+              readOnly: true
+            password:
+              type: string
+              description: The password for connecting to the database.
+              readOnly: true
+          required: [environment]
+
+  neo4jDatabases:
+    description: |
+      The Radius.Data/neo4jDatabases Resource Type deploys a Neo4j graph database. To create a new Neo4j database, define an Application and Container resource in your application definition Bicep file.
+
+        extension radius
+        param environment string
+
+        resource myapplication 'Radius.Core/applications@2025-08-01-preview' = { ... }
+        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = { ... }
+
+      Then add a `neo4jDatabases` resource.
+
+        resource neo4j 'Radius.Data/neo4jDatabases@2025-09-11-preview' = {
+          name: 'neo4j'
+          properties: {
+            application: myapplication.id
+            environment: environment
+          }
+        }
+
+      To connect to the new Neo4j database, add a connection between the container and the new Neo4j database. The final Container resource should look similar to:
+
+        resource myContainer 'Radius.Compute/containers@2025-08-01-preview' = {
+          name: 'myContainer'
+          properties: {
+            environment: environment
+            application: myapplication.id
+            containers: { ... }
+            connections: {
+              neo4jDb: {
+                source: neo4j.id
+              }
+            }
+          }
+        }
+
+      Within your container, your application code can obtain the host, port, username, and password values via environment variables automatically created. 
+
+        CONNECTION_NEO4JDB_HOST
+        CONNECTION_NEO4JDB_PORT
+        CONNECTION_NEO4JDB_DATABASE
+        CONNECTION_NEO4JDB_USERNAME
+        CONNECTION_NEO4JDB_PASSWORD
+
+    apiVersions:
+      '2025-09-11-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically provided by the rad CLI. The typical value is `environment`.
+            application:
+              type: string
+              description: (Optional) The Radius Application ID when the database is app-scoped. Omit to provision a shared database in an Environment.
+            host:
+              type: string
+              readOnly: true
+              description: (Read-only) The DNS hostname used by clients to connect to Neo4j.
+            port:
+              type: integer
+              readOnly: true
+              description: (Read-only) The Bolt protocol port used to connect to Neo4j (typically `7687`).
+            username:
+              type: string
+              readOnly: true
+              description: (Read-only) The username for connecting to Neo4j.
+            password:
+              type: string
+              readOnly: true
+              description: (Read-only) The password for connecting to Neo4j.
+          required:
+            - environment
+
+  mongoDatabases:
+    description: |
+      The Radius.Data/mongoDatabases Resource Type provisions a MongoDB database instance on Kubernetes using Terraform. 
+      
+      Start by adding a mongoDatabases resource to your application definition Bicep file:
+      
+        resource mongo 'Radius.Data/mongoDatabases@2025-10-01-preview' = {
+          name: 'mongo'
+          properties: {
+            name: 'myMongoDb'
+            version: '6.0'
+            size: 'M'
+            credentials: {
+              username: 'admin'
+              password: 'MySecurePassword123'
+            }
+          }
+        }
+
+      Then connect a container to the database:
+
+        resource myContainer 'Radius.Compute/containers@2025-10-01-preview' = {
+          name: 'myContainer'
+          properties: {
+            connections: {
+              mongo: {
+                source: mongo.id
+              }
+            }
+          }
+        }
+
+      The connection automatically injects environment variables into the container for all properties from the database. 
+      The environment variables are named `CONNECTION_<CONNECTION-NAME>_<PROPERTY-NAME>`. 
+      In this example, the connection name is `mongo`, so the environment variables will be:
+
+      CONNECTION_MONGO_NAME
+      CONNECTION_MONGO_VERSION
+      CONNECTION_MONGO_USERNAME
+      CONNECTION_MONGO_PASSWORD
+      CONNECTION_MONGO_HOST
+      CONNECTION_MONGO_PORT
+
+      These variables expose the connection details and credentials of the MongoDB instance for use by your application.
+
+      > ⚠️ **Security note:** The `CONNECTION_MONGO_PASSWORD` variable contains sensitive data and should be handled carefully. 
+      Avoid logging or exposing it in application outputs.
+
+    apiVersions:
+      '2025-10-03-preview':
+        schema:
+          type: object
+          properties:
+            environment:
+              type: string
+              description: (Required) The Radius Environment ID. Typically provided by the rad CLI. The typical value is `environment`.
+            application:
+              type: string
+              description: (Optional) The Radius Application ID when the database is app-scoped. Omit to provision a shared database in an Environment.
+            name:
+              type: string
+              description: The name of the MongoDB database instance.
+              pattern: '^[a-zA-Z0-9\-]+$'
+            version:
+              type: string
+              description: MongoDB server version to deploy.
+              default: "6.0"
+            size:
+              type: string
+              enum: ['S', 'M', 'L']
+              description: |
+                The deployment size profile for the MongoDB instance.  
+                The Recipe implementation defines replicas, resource limits, and storage class for each size.
+
+                - `S`: Small — development and testing  
+                - `M`: Medium — staging or moderate workloads  
+                - `L`: Large — production or high-availability
+              default: "S"
+            credentials:
+              type: object
+              description: Database credentials for the admin user.
+              properties:
+                username:
+                  type: string
+                  description: Admin username.
+                  default: "admin"
+                password:
+                  type: string
+                  description: Admin password.
+                  minLength: 8
+              required:
+                - username
+                - password
+            host:
+              type: string
+              description: "(Read-only) The host name used to connect to the MongoDB database."
+              readOnly: true
+            port:
+              type: integer
+              description: "(Read-only) The port number used to connect to the MongoDB database."
+              readOnly: true
+          required:
+            - name
+            - version
+            - size
+            - credentials
+            - environment
