@@ -74,7 +74,9 @@ You can now start to chat with your own data. Have fun!
 
 ## Deployment with Radius
 
-[Radius](https://radapp.io) provides an automated way to deploy this application to Azure with all required infrastructure provisioned automatically. The `app.bicep` file defines the complete application including Azure OpenAI models and Azure SQL Database.
+[Radius](https://radapp.io) provides an automated way to deploy this application to Azure with all required infrastructure provisioned automatically. The custom Radius Resource Types in `./types/types.yaml` define the abstract AI Model and SQL Database resources that will be used by the application, while the IaC modules under `./recipes` will provision the concrete implementations of the required resources. Recipes and Azure details are tied together in the Radius Environment definition files under `./environments` that define the target deployment environments. The `app.bicep` file defines the application and its connected components and is used to deploy the app using Radius.
+
+![Radius Architecture](./_assets/sql-db-chat-sk-radius.png)
 
 ### Prerequisites
 
