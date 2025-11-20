@@ -72,6 +72,61 @@ The prompt will look like this:
 
 You can now start to chat with your own data. Have fun!
 
+## Deployment with Radius
+
+[Radius](https://radapp.io) provides an automated way to deploy this application to Azure with all required infrastructure provisioned automatically. The `app.bicep` file defines the complete application including Azure OpenAI models and Azure SQL Database.
+
+### Prerequisites
+
+1. Kubernetes cluster(s) where the application will be deployed (AKS in this example), see the [Radius Kubernetes guide](https://docs.radapp.io/guides/operations/kubernetes/overview/#supported-kubernetes-clusters) for more guidance.
+1. Radius installed and initialized on each cluster, see the [Radius quickstart](https://docs.radapp.io/quick-start/) for more details.
+1. An Azure cloud provider configured for Radius in each of your AKS clusters, see the [Radius cloud providers guide](https://docs.radapp.io/guides/operations/providers/overview/) for instructions.
+
+### Deploy the Application to AKS
+
+1. Create and register the Radius Resource Types:
+   ```bash
+   rad resource-type create  --from-file ./types/types.yaml
+   ```
+
+1. Create a Radius Environment (if not already created):
+   ```bash
+   rad env create aks-dev
+   ```
+
+1. Deploy the Environment, being sure to pass in your Azure subscription and resource group as parameters:
+   ```bash
+   rad deploy ./environments/aks-dev.bicep --parameters subscriptionId=<subscriptionId> --parameters resourceGroupName=<resourceGroupName>
+   ```
+
+1. Deploy the Application:
+   ```bash
+   rad deploy app.bicep -e aks-dev -p chatModelName=gpt-4 -p embeddingModelName=text-embedding-3-small
+   ```
+
+   This command will:
+   - Provision an Azure OpenAI instance with both chat and embedding models
+   - Create an Azure SQL Database
+   - Deploy the containerized chatbot application
+   - Automatically configure all connections and environment variables
+
+1. Exec into the chatbot container to start chatting:
+   ```bash
+   kubectl exec -n aks-dev-insurance-chat -it <chatbot-pod-name> -- /bin/sh -c "dotnet azure-sql-sk.dll chat"
+   ```
+
+   > You can find the `<chatbot-pod-name>` by running:
+   >   ```bash
+   >   kubectl get pods -n aks-dev-insurance-chat
+   >   ```
+
+### Clean Up
+
+To remove all deployed resources:
+```bash
+rad app delete insurance-chat
+```
+
 ## F.A.Q.
 
 ### How can I quickly generate the embeddings for my data already stored in Azure SQL?
